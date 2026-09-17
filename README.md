@@ -1,401 +1,118 @@
-# Speckle-Based Stereo 3D Reconstruction with Deep Learning DIC
+# 伪重叠散斑分离与三维形貌重建
 
-[![Python](https://img.shields.io/badge/Python-3.8+-blue?logo=python)](https://www.python.org/)
-[![PyTorch](https://img.shields.io/badge/PyTorch-2.0.1-red?logo=pytorch)](https://pytorch.org/)
-[![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
+本仓库以毕业论文《基于深度学习伪重叠成像分离的形貌测量方法》的最终技术路线为主线。主流程不再使用旧版入口中的示例 StrainNet 参数或不存在的 `DivideNet_V4`，而是明确分为数据准备、DivideNet V3 分离、SIFT 匹配、视差插值和标定三角化五个阶段。
 
-A hybrid **Digital Image Correlation (DIC)** and **deep learning** system for speckle-based stereoscopic 3D reconstruction. This project combines traditional subset-based DIC algorithms with neural networks (DivideNet, DeblurUNet, StrainNet) to perform:
+## 主流程
 
-- **Separation** of mixed speckle images (clear + blurred components)
-- **Deblurring** of speckle patterns
-- **Disparity / Optical Flow** estimation via deep learning or traditional methods
-- **3D Reconstruction** via stereo triangulation into point clouds
-- **Visualization** of depth-colored point clouds
-
----
-
-## Project Overview
-
-```
-Input:  Mixed speckle stereo images (Left / Right)
-        │
-        ▼
-┌──────────────────────────────┐
-│  1. Image Separation         │  DivideNet (clear + blurred)
-│     (Optional: Deblurring)   │  DeblurUNet
-└──────────┬───────────────────┘
-           ▼
-┌──────────────────────────────┐
-│  2. Disparity / Flow         │  StrainNet / ICGN-DIC / SGBM / TV-L1 / SIFT
-│     Estimation               │
-└──────────┬───────────────────┘
-           ▼
-┌──────────────────────────────┐
-│  3. 3D Triangulation         │  Stereo triangulation with calibrated cameras
-└──────────┬───────────────────┘
-           ▼
-Output: 3D Point Cloud (.xyz / .ply / .obj)
+```text
+单目伪重叠散斑图
+  → 按原始采集组划分 train validation test
+  → 同步裁切 256 × 256 的 blended clear blurred 三联图
+  → DivideNet V3 分离 clear 与 blurred 图像
+  → SIFT 稀疏特征匹配
+  → Lowe 比率筛选与 RANSAC 几何筛选
+  → 线性插值生成稠密 u v 位移场
+  → 中值偏差过滤与双边滤波
+  → 去畸变和双目三角化
+  → 统计离群点与深度范围过滤
+  → XYZ 点云
 ```
 
----
+SIFT 只产生稀疏匹配点，稠密位移场来自后续插值。论文中的“物理一致性损失”在原代码里直接约束 `clear + blurred ≈ blended`，但三个张量的数值范围并不匹配；当前重构保留已训练 V3 权重的兼容性，不把该项重新解释为严格能量守恒。
 
-## Repository Structure
+## 目录
 
-```
-├── main_reconstruction_pipeline.py   # 🚀 End-to-end reconstruction pipeline
-├── requirements.txt                  # Python dependencies
-├── .gitignore                        # Ignored data/checkpoint directories
-│
-├── models/                           # Neural network model definitions
-│   ├── self_model.py                 # DivideNet (V1-V4) & DeblurUNet
-│   ├── StrainNetF.py                 # StrainNet optical flow model
-│   ├── util.py                       # Model utility layers
-│   └── __init__.py
-│
-├── train_divide.py                   # Train DivideNet (speckle separation)
-├── train_debrurring.py               # Train DeblurUNet (deblurring)
-├── test_divide.py                    # Test/inference with DivideNet
-├── test_debrurring.py                # Test/inference with DeblurUNet
-├── reconstruct_large_image.py        # Reconstruct large images from tiled inference
-│
-├── StrainNet_inference.py            # StrainNet inference script
-├── ICGN_Style_DIC.py                 # Traditional subset-based DIC (IC-GN style)
-├── SGBM_2D_DIC.py                    # Semi-Global Block Matching for DIC
-├── Pyramidal LK.py                   # Pyramidal Lucas-Kanade optical flow
-├── optical_flow_tvl1.py              # TV-L1 optical flow
-├── sift.py                           # SIFT feature matching
-├── opencv.py                         # OpenCV-based matching utilities
-│
-├── 2DTrans3D.py                      # 2D disparity → 3D point cloud reconstruction
-├── fix_disparity_for_dic.py          # Disparity post-processing and refinement
-├── DIC_keshihua.py                   # DIC result visualization (CSV → colored PLY)
-├── xyz_visual.py                     # XYZ point cloud visualization
-├── yuanzhu_r_calculate.py            # Cylinder radius calculation from point cloud
-├── analyse.py                        # Analysis and statistics utilities
-│
-├── Script_flow.m                     # MATLAB optical flow script
-│
-└── README.md                         # This file
+```text
+pseudo_overlap/
+  config.py          配置与标定参数校验
+  data.py            三联图发现、按组划分和同步裁切
+  separation.py      DivideNet V3 整图分块推理
+  matching.py        SIFT、比率筛选、RANSAC 和插值
+  reconstruction.py  位移过滤、去畸变和三角化
+  pipeline.py        从分离图像到点云的编排
+  cli.py             命令行入口
+configs/
+  paper_calibration.example.json
+tests/
+legacy scripts       根目录中原有的探索脚本，暂时保留用于结果追溯
 ```
 
----
+## 安装
 
-## Requirements
-
-### Python & Dependencies
-
-- Python 3.8+
-- PyTorch 2.0.1 (CUDA recommended)
-- See [requirements.txt](requirements.txt) for the full list:
+建议使用 Python 3.10，并在独立虚拟环境中安装依赖：
 
 ```bash
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 ```
 
-If you have a CUDA-capable GPU, install the matching PyTorch version from [pytorch.org](https://pytorch.org/).
+仓库不包含论文数据集和模型权重。没有这些文件时，可以运行静态检查和测试，但不能复现论文 PSNR、SSIM 或最终点云。
 
-**Key dependencies:**
-| Package | Version | Purpose |
-|---|---|---|
-| torch | 2.0.1 | Deep learning framework |
-| torchvision | 0.15.2 | Image transforms & datasets |
-| opencv-python | 4.13.0 | Image processing & triangulation |
-| open3d | 0.19.0 | 3D point cloud visualization |
-| numpy | 1.26.4 | Numerical computing |
-| scipy | 1.15.3 | Signal/image filtering |
-| scikit-image | 0.25.2 | Image processing utilities |
-| matplotlib | 3.10.9 | Visualization & color mapping |
-| Pillow | 12.1.1 | Image I/O |
-| pandas | 2.3.3 | CSV data handling |
-| tqdm | 4.67.3 | Progress bars |
-| imageio | 2.37.3 | Image/volume I/O |
-| pyransac3d | 0.6.0 | RANSAC-based 3D fitting |
+## 数据准备
 
-### Hardware
-
-- **GPU** (recommended): CUDA-compatible GPU for model training and inference
-- **CPU**: Fallback mode supported (slower for neural network inference)
-- **Camera**: Stereo camera setup for capturing speckle images
-
----
-
-## Quick Start
-
-### 1. Clone & Install
+输入目录中的 BMP 文件应按每组三张的采集顺序排列：blended、clear、blurred。下面的命令先按原始采集组做 7:2:1 划分，再裁切，避免同一大图的相邻 patch 同时进入训练集和验证集。
 
 ```bash
-git clone https://github.com/your-username/your-repo.git
-cd your-repo
-pip install -r requirements.txt
+python main_reconstruction_pipeline.py prepare \
+  --input /path/to/raw/Camera1 \
+  --output /path/to/prepared \
+  --tile-size 256 \
+  --stride 256
 ```
 
-### 2. Prepare Data
+输出包括 `train/`、`validation/`、`test/` 和可复核的 `split_manifest.json`。
 
-Place your speckle stereo images in the appropriate directories:
+## 图像分离
 
-| Directory (gitignored) | Content |
-|---|---|
-| `bishe_Divide_photoes/` | Mixed speckle images for DivideNet |
-| `bishe_DivideNet_photoes_Preprocessing/` | Preprocessed tiles for DivideNet |
-| `bishe_Deblurring_photoes/` | Blurry/sharp pairs for DeblurUNet |
-| `bishe_DeblurringNet_Preprocessing/` | Preprocessed tiles for DeblurUNet |
-| `2DTrans3D_photoes/` | Stereo image pairs for 3D reconstruction |
-| `checkpoints/` | Store pretrained model weights |
-
-### 3. Download or Train Models
-
-**Option A: Use pretrained weights** (place in `checkpoints/`)
+`pseudo_overlap.separation.load_dividenet_v3` 加载论文最终采用的 V3 网络，`separate_image` 对任意尺寸灰度图补边、分块推理并恢复原尺寸。命令行用法：
 
 ```bash
-checkpoints/
-├── V4_UNet_Final/best_model_v4.pth      # DivideNet V4 (speckle separation)
-├── StrainNet-f.pth.tar                   # StrainNet (optical flow)
-├── V3_Final/best_model_v3.pth            # DivideNet V3
-├── Deblur_V1/best_deblur_model.pth       # DeblurUNet
+python main_reconstruction_pipeline.py separate \
+  --input /path/to/mixed.bmp \
+  --checkpoint checkpoints/V3_Final/best_model_v3.pth \
+  --output outputs/separated
 ```
 
-**Option B: Train from scratch**
-
-```bash
-# Train DivideNet to separate mixed speckle images
-python train_divide.py
-
-# Train DeblurUNet for speckle deblurring
-python train_debrurring.py
-```
-
-### 4. Run the Main Reconstruction Pipeline
+也可以在 Python 中调用：
 
 ```python
-python main_reconstruction_pipeline.py
+import cv2
+
+from pseudo_overlap.separation import load_dividenet_v3, save_grayscale, separate_image
+
+model, device = load_dividenet_v3("checkpoints/V3_Final/best_model_v3.pth")
+mixed = cv2.imread("mixed.bmp", cv2.IMREAD_GRAYSCALE)
+clear, blurred = separate_image(mixed, model, device)
+save_grayscale(clear, "outputs/clear.png")
+save_grayscale(blurred, "outputs/blurred.png")
 ```
 
-This performs end-to-end 3D reconstruction:
-1. Loads stereo image pair
-2. Separates images into clear/blur components (DivideNet)
-3. Computes disparity field (StrainNet)
-4. Triangulates to 3D point cloud
-5. Saves the result as `output_cloud.obj`
+## 三维重建
 
-### 5. Alternative Methods
+先复制并核对 `configs/paper_calibration.example.json`。其中数值来自论文对应版本，但真实实验前仍应使用本次实验的标定结果复核旋转矩阵、平移方向、图像尺寸和深度范围。
 
 ```bash
-# Traditional subset-based DIC
-python ICGN_Style_DIC.py
-
-# SGBM-based disparity
-python SGBM_2D_DIC.py
-
-# Optical flow (TV-L1)
-python optical_flow_tvl1.py
-
-# SIFT-based feature matching
-python sift.py
-
-# Pyramidal Lucas-Kanade
-python "Pyramidal LK.py"
+python main_reconstruction_pipeline.py reconstruct \
+  --left outputs/clear.png \
+  --right outputs/blurred.png \
+  --config configs/paper_calibration.example.json \
+  --output outputs/reconstruction
 ```
 
-### 6. Visualize Results
+输出：
+
+- `raw_disp_u.npy` 和 `raw_disp_v.npy`
+- `filtered_disp_u.npy` 和 `filtered_disp_v.npy`
+- `point_cloud.xyz`
+
+## 验证
 
 ```bash
-# Convert DIC results (CSV) to colored point cloud
-python DIC_keshihua.py
-
-# Visualize XYZ point cloud
-python xyz_visual.py
-
-# Calculate cylinder radius from reconstructed point cloud
-python yuanzhu_r_calculate.py
+python -m unittest discover -s tests -v
+python -m compileall -q pseudo_overlap tests main_reconstruction_pipeline.py
 ```
 
----
+测试覆盖按组划分不泄漏、三联图同步裁切，以及已知标定几何下的三角化深度。
 
-## Key Modules
+## 旧脚本说明
 
-### DivideNet (Speckle Separation)
-
-Separates a mixed speckle image (clear + blurred superimposed) into its two components. Available versions:
-
-| Version | Architecture | Description |
-|---|---|---|
-| V1 | Shared encoder + dual decoder | Basic separation |
-| V2 | UNet-style with skip connections | Improved edge preservation |
-| V3 | Dual encoders + dual decoders | Better separation quality |
-| V4 | (self_model.py: `DivideNet_V4`) | Latest version |
-
-**Training data format:**
-- Mixed images: `{id}_blended.png`
-- Clear component: `{id}_clear.png`
-- Blurred component: `{id}_blurred.png`
-
-### DeblurUNet
-
-UNet-based image deblurring for speckle patterns.
-
-**Training data format:**
-- Blurred input: `{name}_blurred.png`
-- Sharp target: `{name}_sharp.png`
-
-### StrainNet
-
-Optical flow network adapted for DIC disparity estimation. It predicts a 2-channel dense displacement field (u, v) between image pairs. Architecture based on FlowNet/SpyNet with multiple prediction layers.
-
-### 2D → 3D Reconstruction
-
-The `2DTrans3D.py` script processes a disparity field through:
-
-1. **Median deviation filtering** — removes isolated outlier pixels
-2. **Bilateral filtering** — smooths disparity while preserving edges
-3. **ROI margin cropping** — removes boundary artifacts
-4. **Undistortion** — corrects lens distortion using calibration parameters
-5. **Triangulation** — computes 3D coordinates from stereo correspondences
-6. **Statistical outlier removal (SOR)** — removes spurious 3D points
-7. **Depth range filtering** — keeps points within valid depth range
-
----
-
-## Camera Calibration
-
-The pipeline requires pre-calibrated stereo camera parameters:
-
-- **Intrinsic matrices** (K1, K2) for each camera
-- **Distortion coefficients** (dist1, dist2)
-- **Extrinsic parameters** (rotation R, translation T) between cameras
-
-Calibration can be performed using OpenCV's chessboard calibration tools. Example calibration parameters are provided in `2DTrans3D.py` and `main_reconstruction_pipeline.py`.
-
-```
-Camera Setup:
-   Left Camera ──── baseline ──── Right Camera
-        │                            │
-   (Reference)                  (Target)
-   P1 = K1 [ I | 0 ]          P2 = K2 [ R | T ]
-```
-
----
-
-## Project Workflow Examples
-
-### Full Pipeline (Training + Reconstruction)
-
-```mermaid
-graph TD
-    A[Capture Stereo Speckle Images] --> B[Preprocess: Tile & Augment]
-    B --> C[Train DivideNet]
-    B --> D[Train DeblurUNet]
-    C --> E[Inference: Separate Images]
-    D --> E
-    E --> F[Disparity Estimation]
-    F --> G[3D Triangulation]
-    G --> H[Point Cloud Visualization]
-    G --> I[Analysis: Cylinder Fit, etc.]
-```
-
-### Data Preprocessing
-
-1. Capture stereo speckle images using your calibrated stereo camera
-2. (Optional) Tile large images into 256×256 patches
-3. Name files according to the expected naming conventions
-4. Place data in the appropriate directories
-
----
-
-## Configuration Notes
-
-All scripts contain hard-coded paths. Before running, update the following:
-
-- **`main_reconstruction_pipeline.py`**: Model checkpoint paths, camera intrinsics, image path
-- **`train_divide.py`**: Data directory, save directory for checkpoints
-- **`train_debrurring.py`**: Data directory, save directory for checkpoints
-- **`2DTrans3D.py`**: Camera calibration parameters, data & output paths
-- **`ICGN_Style_DIC.py`**: Image paths, subset/search parameters
-
-**Key parameters in scripts:**
-- `SUBSET_SIZE` — DIC subset window size (ICGN_Style_DIC.py)
-- `STEP_SIZE` — Grid step size for DIC computation
-- `SEARCH_MARGIN` — Search range in the target image
-- `tile_size` / `stride` — Image tiling parameters (256 recommended)
-- `device` — `'cuda'` or `'cpu'`
-
----
-
-## Results
-
-The pipeline outputs:
-- **3D point cloud files**: `.xyz`, `.obj`, or `.ply` formats
-- **Colored point clouds**: Depth-mapped color visualization (via `DIC_keshihua.py`)
-- **Disparity maps**: Numpy arrays (`.npy`) and visualizations (`.png`)
-- **Separated images**: Clear and blurred components after DivideNet inference
-
----
-
-## Troubleshooting
-
-| Issue | Likely Cause | Solution |
-|---|---|---|
-| CUDA out of memory | Batch size too large | Reduce batch size in training scripts |
-| No points in output | Incorrect calibration parameters | Verify camera intrinsics and extrinsics |
-| Poor disparity results | Domain gap in training data | Fine-tune StrainNet on your speckle patterns |
-| DivideNet fails to separate | Model not trained for your pattern | Collect training data specific to your setup |
-| "Module not found" | Missing dependencies | `pip install -r requirements.txt` |
-| Path errors | Hard-coded paths need update | Search and replace paths for your environment |
-
----
-
-## Citation
-
-If you use this code in your research, please consider citing:
-
-```bibtex
-@software{speckle-dic-3d,
-  author = {Yu Wenhao},
-  title = {Speckle-Based Stereo 3D Reconstruction with Deep Learning DIC},
-  year = {2025},
-  description = {Hybrid DIC and deep learning system for speckle-based 3D reconstruction}
-}
-```
-
----
-
-## License
-
-This project is for academic and research purposes.
-
----
-
-## Related Resources
-
-- [Digital Image Correlation (DIC)](https://en.wikipedia.org/wiki/Digital_image_correlation) — Wikipedia
-- [StrainNet](https://github.com/jyang526843/StrainNet) — Original StrainNet paper & code
-- [Open3D](http://www.open3d.org/) — 3D point cloud library
-- [PyTorch](https://pytorch.org/) — Deep learning framework
-
----
-
-## 中文说明
-
-本仓库是一个基于**数字图像相关 (DIC)** 和**深度学习**的散斑立体视觉三维重建系统，包含以下功能：
-
-| 模块 | 说明 |
-|---|---|
-| **DivideNet** | 将混合散斑图分离为清晰和模糊分量 |
-| **DeblurUNet** | UNet 去模糊网络 |
-| **StrainNet** | 光流/视差估计网络 |
-| **传统 DIC** | 基于子集迭代匹配的 SIFT 算法 |
-| **三维重建** | 双目三角化生成三维点云 |
-| **可视化分析** | 点云上色、圆柱拟合、数据分析 |
-
-### 使用步骤
-
-1. **安装依赖**：`pip install -r requirements.txt`
-2. **准备数据**：将散斑图像放入对应目录
-3. **训练或下载模型**：训练 DivideNet / DeblurUNet，或直接下载预训练权重
-4. **运行重建**：执行 `main_reconstruction_pipeline.py` 或 `2DTrans3D.py`
-5. **可视化**：使用 `DIC_keshihua.py` 生成彩色点云
-
-> 注意：所有脚本中包含硬编码路径，使用前请按你的环境修改。
-
----
-
-*Built for academic research on speckle-based 3D measurement and digital image correlation.*
+根目录中的 `sift.py`、`2DTrans3D.py`、`DivideNet_cut.py`、`reconstruct_large_image.py` 等文件保留为历史实验记录。它们包含硬编码路径、固定图像尺寸或探索路线，不再作为推荐入口。新的主入口是 `main_reconstruction_pipeline.py`，实际实现位于 `pseudo_overlap/`。
