@@ -11,3 +11,6 @@
 /xyz/
 /2DTrans3D_result/
 /DIC/
+__pycache__/
+*.py[cod]
+.pytest_cache/
