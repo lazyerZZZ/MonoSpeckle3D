@@ -1,0 +1,28 @@
+{
+  "calibration": {
+    "left_intrinsic": [[9426.84, -54.3315, 1023.97], [0.0, 9405.09, 1050.64], [0.0, 0.0, 1.0]],
+    "right_intrinsic": [[9620.13, -124.281, 1099.7], [0.0, 9370.52, 1122.3], [0.0, 0.0, 1.0]],
+    "left_distortion": [-0.118265, 22.0724, 0.0115377, -0.00425971, 0.0],
+    "right_distortion": [0.426466, 22.5269, 0.0212542, 0.0504823, 0.0],
+    "rotation": [[0.83000316, -0.03334138, -0.55676126], [0.01781261, 0.99928708, -0.03328732], [0.55747418, 0.01771121, 0.83000533]],
+    "translation": [183.001, 6.1305, 50.3829]
+  },
+  "matching": {
+    "max_features": 20000,
+    "ratio_threshold": 0.7,
+    "ransac_threshold": 3.0,
+    "min_matches": 8
+  },
+  "filtering": {
+    "median_window": 5,
+    "jump_threshold": 0.5,
+    "bilateral_diameter": 9,
+    "bilateral_sigma_color": 0.5,
+    "bilateral_sigma_space": 5.0,
+    "roi_margin": 200,
+    "min_depth": 50.0,
+    "max_depth": 500.0,
+    "sor_neighbors": 30,
+    "sor_std_ratio": 2.5
+  }
+}

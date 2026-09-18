@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
+  <title id="title">MonoSpeckle3D monocular pseudo-overlapped imaging principle</title>
+  <desc id="desc">Two reflected optical paths create virtual viewpoints that are combined by a beam splitter and recorded by one physical camera.</desc>
+  <defs>
+    <marker id="arrowBlue" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><path d="M0,0 L10,3 L0,6 Z" fill="#2563eb"/></marker>
+    <marker id="arrowOrange" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><path d="M0,0 L10,3 L0,6 Z" fill="#f97316"/></marker>
+    <marker id="arrowDark" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><path d="M0,0 L10,3 L0,6 Z" fill="#0f172a"/></marker>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="5" stdDeviation="6" flood-opacity="0.14"/></filter>
+    <pattern id="speckles" width="34" height="34" patternUnits="userSpaceOnUse">
+      <rect width="34" height="34" fill="#f8fafc"/><circle cx="7" cy="8" r="3" fill="#0f172a"/><circle cx="25" cy="12" r="2.5" fill="#334155"/><circle cx="16" cy="27" r="3.5" fill="#111827"/><circle cx="31" cy="30" r="1.8" fill="#475569"/>
+    </pattern>
+  </defs>
+  <rect width="1200" height="620" rx="28" fill="#f8fafc"/>
+  <text x="600" y="54" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="28" font-weight="700" fill="#0f172a">Monocular Pseudo-Overlapped Speckle Imaging</text>
+  <text x="600" y="84" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="16" fill="#475569">Two virtual viewpoints · one physical camera · one captured frame</text>
+
+  <g filter="url(#shadow)">
+    <rect x="60" y="190" width="185" height="230" rx="18" fill="white" stroke="#cbd5e1" stroke-width="2"/>
+    <rect x="87" y="225" width="131" height="150" rx="8" fill="url(#speckles)" stroke="#64748b" stroke-width="2"/>
+    <text x="152" y="405" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="18" font-weight="700" fill="#0f172a">Speckled object</text>
+  </g>
+
+  <g font-family="Inter,Arial,sans-serif">
+    <rect x="352" y="135" width="120" height="54" rx="10" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+    <text x="412" y="168" text-anchor="middle" font-size="17" font-weight="700" fill="#1d4ed8">Mirror A</text>
+    <rect x="352" y="430" width="120" height="54" rx="10" fill="#ffedd5" stroke="#f97316" stroke-width="2"/>
+    <text x="412" y="454" text-anchor="middle" font-size="17" font-weight="700" fill="#c2410c">Mirror B</text>
+    <text x="412" y="475" text-anchor="middle" font-size="12" fill="#9a3412">moved → longer path</text>
+
+    <path d="M245 265 L352 162 L610 258" fill="none" stroke="#2563eb" stroke-width="5" marker-end="url(#arrowBlue)"/>
+    <path d="M245 345 L352 457 L610 330" fill="none" stroke="#f97316" stroke-width="5" marker-end="url(#arrowOrange)"/>
+    <text x="365" y="235" text-anchor="middle" font-size="15" fill="#1d4ed8">virtual view A · clear</text>
+    <text x="372" y="392" text-anchor="middle" font-size="15" fill="#c2410c">virtual view B · slightly blurred</text>
+
+    <path d="M306 224 l36 -36 M306 188 l36 36" stroke="#2563eb" stroke-width="3" stroke-dasharray="6 5"/>
+    <path d="M306 386 l36 36 M306 422 l36 -36" stroke="#f97316" stroke-width="3" stroke-dasharray="6 5"/>
+    <text x="286" y="172" text-anchor="middle" font-size="14" fill="#64748b">virtual viewpoint A</text>
+    <text x="286" y="455" text-anchor="middle" font-size="14" fill="#64748b">virtual viewpoint B</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <polygon points="610,220 710,290 610,360" fill="#ccfbf1" stroke="#0f766e" stroke-width="3"/>
+    <line x1="625" y1="242" x2="625" y2="338" stroke="#5eead4" stroke-width="8" opacity="0.8"/>
+    <text x="660" y="398" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="17" font-weight="700" fill="#0f766e">Beam splitter</text>
+    <text x="660" y="420" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="14" fill="#475569">combines both paths</text>
+  </g>
+
+  <path d="M710 290 L835 290" fill="none" stroke="#0f172a" stroke-width="6" marker-end="url(#arrowDark)"/>
+
+  <g filter="url(#shadow)">
+    <rect x="845" y="190" width="245" height="205" rx="24" fill="#0f172a"/>
+    <rect x="805" y="235" width="70" height="115" rx="15" fill="#334155" stroke="#94a3b8" stroke-width="3"/>
+    <circle cx="842" cy="292" r="25" fill="#0f172a" stroke="#60a5fa" stroke-width="6"/>
+    <rect x="915" y="225" width="125" height="95" rx="10" fill="#e2e8f0"/>
+    <circle cx="945" cy="252" r="9" fill="#2563eb" opacity="0.85"/><circle cx="985" cy="275" r="13" fill="#f97316" opacity="0.55"/><circle cx="1012" cy="245" r="8" fill="#2563eb" opacity="0.8"/><circle cx="958" cy="298" r="10" fill="#f97316" opacity="0.5"/>
+    <text x="968" y="355" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="22" font-weight="800" fill="white">ONE PHYSICAL CAMERA</text>
+    <text x="968" y="380" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="15" fill="#cbd5e1">single pseudo-overlapped frame</text>
+  </g>
+
+  <path d="M968 395 L968 485" fill="none" stroke="#0f172a" stroke-width="4" marker-end="url(#arrowDark)"/>
+  <g filter="url(#shadow)">
+    <rect x="820" y="500" width="295" height="72" rx="16" fill="white" stroke="#7c3aed" stroke-width="3"/>
+    <text x="968" y="531" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="19" font-weight="700" fill="#6d28d9">DivideNet V3 → SIFT → 3D</text>
+    <text x="968" y="556" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="14" fill="#475569">separation · matching · triangulation</text>
+  </g>
+
+  <rect x="55" y="520" width="635" height="54" rx="14" fill="#e0f2fe" stroke="#0284c7"/>
+  <text x="372" y="545" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="17" font-weight="700" fill="#075985">Innovation: virtual stereo geometry without a second physical camera</text>
+  <text x="372" y="566" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="13" fill="#475569">Reduced hardware footprint while retaining two-view information for triangulation</text>
+</svg>

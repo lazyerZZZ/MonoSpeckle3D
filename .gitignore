@@ -1,0 +1,16 @@
+*.pth
+/bishe_Deblurring_photoes/
+/bishe_DeblurringNet_Preprocessing/
+/bishe_Divide_photoes/
+/bishe_DivideNet_photoes_Preprocessing/
+/results/
+/test_results/
+*.pth.tar
+/checkpoints/
+/2DTrans3D_photoes/
+/xyz/
+/2DTrans3D_result/
+/DIC/
+__pycache__/
+*.py[cod]
+.pytest_cache/
