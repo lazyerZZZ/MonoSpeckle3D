@@ -7,6 +7,8 @@ A research pipeline for reconstructing 3D morphology from a single pseudo-overla
 
 The repository keeps only the final route selected in the thesis. Deblur, StrainNet, SGBM, ICGN, TV-L1, and Lucas-Kanade optical flow were explored during development but are not part of the maintained pipeline.
 
+The original thesis code, including the exploratory routes and historical scripts, is preserved in the [`backup/main-before-paper-refactor-20260918`](https://github.com/lazyerZZZ/Recoginition_Dic_Net/tree/backup/main-before-paper-refactor-20260918) branch. Use that branch for implementation archaeology or comparison with the refactored main pipeline.
+
 ## Scope
 
 Although the project originated as undergraduate thesis code, it implements a complete optical measurement chain whose stages can be inspected and tested independently. It can serve as a foundation for:

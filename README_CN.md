@@ -7,6 +7,8 @@
 
 仓库只保留论文最终采用的技术路线。Deblur、StrainNet、SGBM、ICGN、TV-L1 和 LK 光流等探索后未采用的方法不属于当前代码主线。
 
+原始毕设代码、探索路线和历史脚本完整保存在 [`backup/main-before-paper-refactor-20260918`](https://github.com/lazyerZZZ/Recoginition_Dic_Net/tree/backup/main-before-paper-refactor-20260918) 分支。如需追溯早期实现或与重构后的主线对照，请查看该分支。
+
 ## 项目定位
 
 本项目起源于本科毕业设计，但实现的是一条完整、可拆分验证的光学测量与三维重建链路，可作为以下工作的基础：
