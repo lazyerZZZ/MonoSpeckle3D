@@ -1,108 +1,104 @@
-# 伪重叠散斑分离与三维形貌重建
+# 伪重叠散斑三维形貌重建
 
-本仓库以毕业论文《基于深度学习伪重叠成像分离的形貌测量方法》的最终技术路线为主线。主流程不再使用旧版入口中的示例 StrainNet 参数或不存在的 `DivideNet_V4`，而是明确分为数据准备、DivideNet V3 分离、SIFT 匹配、视差插值和标定三角化五个阶段。
-
-## 主流程
+这个仓库只保留毕业论文最终采用的一条主线：
 
 ```text
-单目伪重叠散斑图
-  → 按原始采集组划分 train validation test
-  → 同步裁切 256 × 256 的 blended clear blurred 三联图
-  → DivideNet V3 分离 clear 与 blurred 图像
-  → SIFT 稀疏特征匹配
-  → Lowe 比率筛选与 RANSAC 几何筛选
-  → 线性插值生成稠密 u v 位移场
-  → 中值偏差过滤与双边滤波
-  → 去畸变和双目三角化
-  → 统计离群点与深度范围过滤
+原始三联图
+  → 按采集组划分 7:2:1 数据集并裁成 256 × 256
+  → 训练 DivideNet V3
+  → 将一张伪重叠图分离为清晰图和模糊图
+  → SIFT 稀疏匹配
+  → Lowe 比率筛选和 RANSAC 几何筛选
+  → 线性插值得到稠密位移场
+  → 中值偏差过滤和双边滤波
+  → 标定去畸变和三角化
+  → 统计离群点与深度过滤
   → XYZ 点云
 ```
 
-SIFT 只产生稀疏匹配点，稠密位移场来自后续插值。论文中的“物理一致性损失”在原代码里直接约束 `clear + blurred ≈ blended`，但三个张量的数值范围并不匹配；当前重构保留已训练 V3 权重的兼容性，不把该项重新解释为严格能量守恒。
+仓库中不再包含 Deblur、StrainNet、SGBM、ICGN、TV-L1、LK 光流等论文探索后未选用的路线。
 
-## 目录
+## 代码结构
 
 ```text
-pseudo_overlap/
-  config.py          配置与标定参数校验
-  data.py            三联图发现、按组划分和同步裁切
-  separation.py      DivideNet V3 整图分块推理
-  matching.py        SIFT、比率筛选、RANSAC 和插值
-  reconstruction.py  位移过滤、去畸变和三角化
-  pipeline.py        从分离图像到点云的编排
-  cli.py             命令行入口
+main_reconstruction_pipeline.py   唯一入口
 configs/
-  paper_calibration.example.json
-tests/
-legacy scripts       根目录中原有的探索脚本，暂时保留用于结果追溯
+  paper_calibration.example.json  标定和主线参数
+pseudo_overlap/
+  data.py                         数据分组和同步裁切
+  model.py                        DivideNet V3
+  training.py                     V3 训练
+  separation.py                   整图分块分离
+  matching.py                     SIFT RANSAC 线性插值
+  reconstruction.py               视差过滤 三角化 点云过滤
+  pipeline.py                     从混合图到点云的完整编排
+  cli.py                          三个顺序执行阶段
+tests/                            数据与几何测试
 ```
 
 ## 安装
-
-建议使用 Python 3.10，并在独立虚拟环境中安装依赖：
 
 ```bash
 python -m pip install -r requirements.txt
 ```
 
-仓库不包含论文数据集和模型权重。没有这些文件时，可以运行静态检查和测试，但不能复现论文 PSNR、SSIM 或最终点云。
+## 第一步 准备数据
 
-## 数据准备
-
-输入目录中的 BMP 文件应按每组三张的采集顺序排列：blended、clear、blurred。下面的命令先按原始采集组做 7:2:1 划分，再裁切，避免同一大图的相邻 patch 同时进入训练集和验证集。
+输入 BMP 文件按每组三张的顺序排列：blended、clear、blurred。程序先按原始采集组划分，再裁切，避免同一张大图的相邻 patch 泄漏到不同数据集。
 
 ```bash
 python main_reconstruction_pipeline.py prepare \
   --input /path/to/raw/Camera1 \
-  --output /path/to/prepared \
-  --tile-size 256 \
-  --stride 256
+  --output data/prepared
 ```
 
-输出包括 `train/`、`validation/`、`test/` 和可复核的 `split_manifest.json`。
+固定设置：
 
-## 图像分离
+- 训练集、验证集、测试集比例为 7:2:1
+- 随机种子为 42
+- patch 和步长均为 256 像素
 
-`pseudo_overlap.separation.load_dividenet_v3` 加载论文最终采用的 V3 网络，`separate_image` 对任意尺寸灰度图补边、分块推理并恢复原尺寸。命令行用法：
+## 第二步 训练 DivideNet V3
 
 ```bash
-python main_reconstruction_pipeline.py separate \
-  --input /path/to/mixed.bmp \
-  --checkpoint checkpoints/V3_Final/best_model_v3.pth \
-  --output outputs/separated
+python main_reconstruction_pipeline.py train \
+  --dataset data/prepared \
+  --checkpoints checkpoints
 ```
 
-也可以在 Python 中调用：
+训练固定为论文主线设置：Batch Size 128、200 epochs、初始学习率 `2e-4`，并根据验证损失降低学习率。最佳权重保存为 `checkpoints/best_model_v3.pth`。
 
-```python
-import cv2
+原代码中的 `clear + blurred ≈ blended` 在这里仅称为简化的混合图重构约束，不把它表述为严格的能量守恒。
 
-from pseudo_overlap.separation import load_dividenet_v3, save_grayscale, separate_image
+## 第三步 从混合图重建点云
 
-model, device = load_dividenet_v3("checkpoints/V3_Final/best_model_v3.pth")
-mixed = cv2.imread("mixed.bmp", cv2.IMREAD_GRAYSCALE)
-clear, blurred = separate_image(mixed, model, device)
-save_grayscale(clear, "outputs/clear.png")
-save_grayscale(blurred, "outputs/blurred.png")
-```
-
-## 三维重建
-
-先复制并核对 `configs/paper_calibration.example.json`。其中数值来自论文对应版本，但真实实验前仍应使用本次实验的标定结果复核旋转矩阵、平移方向、图像尺寸和深度范围。
+先复制并核对标定配置：
 
 ```bash
-python main_reconstruction_pipeline.py reconstruct \
-  --left outputs/clear.png \
-  --right outputs/blurred.png \
-  --config configs/paper_calibration.example.json \
+cp configs/paper_calibration.example.json configs/calibration.json
+```
+
+然后执行完整主线：
+
+```bash
+python main_reconstruction_pipeline.py run \
+  --input data/mixed.bmp \
+  --checkpoint checkpoints/best_model_v3.pth \
+  --config configs/calibration.json \
   --output outputs/reconstruction
 ```
 
-输出：
+一次运行依次完成图像分离、SIFT 匹配、插值、视差过滤、三角化和点云过滤，输出：
 
-- `raw_disp_u.npy` 和 `raw_disp_v.npy`
-- `filtered_disp_u.npy` 和 `filtered_disp_v.npy`
-- `point_cloud.xyz`
+```text
+clear.png
+blurred.png
+raw_disp_u.npy
+raw_disp_v.npy
+filtered_disp_u.npy
+filtered_disp_v.npy
+point_cloud.xyz
+```
 
 ## 验证
 
@@ -111,8 +107,4 @@ python -m unittest discover -s tests -v
 python -m compileall -q pseudo_overlap tests main_reconstruction_pipeline.py
 ```
 
-测试覆盖按组划分不泄漏、三联图同步裁切，以及已知标定几何下的三角化深度。
-
-## 旧脚本说明
-
-根目录中的 `sift.py`、`2DTrans3D.py`、`DivideNet_cut.py`、`reconstruct_large_image.py` 等文件保留为历史实验记录。它们包含硬编码路径、固定图像尺寸或探索路线，不再作为推荐入口。新的主入口是 `main_reconstruction_pipeline.py`，实际实现位于 `pseudo_overlap/`。
+仓库不包含原始数据和模型权重，因此仅凭仓库无法复现论文中的 PSNR、SSIM 和最终实验点云。

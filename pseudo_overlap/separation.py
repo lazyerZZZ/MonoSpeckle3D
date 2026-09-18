@@ -9,10 +9,10 @@ from PIL import Image
 def load_dividenet_v3(checkpoint: str | Path, device: str | None = None):
     import torch
 
-    from models.self_model import DivideNet_V3
+    from .model import DivideNetV3
 
     selected_device = torch.device(device or ("cuda" if torch.cuda.is_available() else "cpu"))
-    model = DivideNet_V3().to(selected_device)
+    model = DivideNetV3().to(selected_device)
     state = torch.load(checkpoint, map_location=selected_device)
     if isinstance(state, dict) and "state_dict" in state:
         state = state["state_dict"]

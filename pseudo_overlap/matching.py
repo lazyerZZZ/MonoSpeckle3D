@@ -41,6 +41,6 @@ def sift_displacement(left: np.ndarray, right: np.ndarray, config: MatchConfig) 
     displacement = right_points - left_points
     height, width = left.shape
     grid_y, grid_x = np.mgrid[0:height, 0:width]
-    dense_u = griddata(left_points, displacement[:, 0], (grid_x, grid_y), method=config.interpolation)
-    dense_v = griddata(left_points, displacement[:, 1], (grid_x, grid_y), method=config.interpolation)
+    dense_u = griddata(left_points, displacement[:, 0], (grid_x, grid_y), method="linear")
+    dense_v = griddata(left_points, displacement[:, 1], (grid_x, grid_y), method="linear")
     return MatchResult(left_points, right_points, dense_u, dense_v)

@@ -3,6 +3,7 @@ from __future__ import annotations
 import cv2
 import numpy as np
 from scipy.ndimage import median_filter
+from scipy.spatial import cKDTree
 
 from .config import CameraCalibration, FilterConfig
 
@@ -46,14 +47,12 @@ def triangulate(
     homogeneous = cv2.triangulatePoints(p1, p2, left_ud.reshape(-1, 2).T, right_ud.reshape(-1, 2).T)
     points = (homogeneous[:3] / homogeneous[3]).T
     points = points[np.all(np.isfinite(points), axis=1)]
-    if config.use_statistical_outlier_removal and len(points) >= config.sor_neighbors:
-        try:
-            import open3d as o3d
-        except ImportError as error:
-            raise RuntimeError("Open3D is required when statistical outlier removal is enabled") from error
-        cloud = o3d.geometry.PointCloud()
-        cloud.points = o3d.utility.Vector3dVector(points)
-        _, indices = cloud.remove_statistical_outlier(config.sor_neighbors, config.sor_std_ratio)
-        points = points[np.asarray(indices, dtype=int)]
     depth = points[:, 2]
-    return points[(depth > config.min_depth) & (depth < config.max_depth)]
+    points = points[(depth > config.min_depth) & (depth < config.max_depth)]
+    if len(points) <= config.sor_neighbors:
+        return points
+    neighbor_count = min(config.sor_neighbors + 1, len(points))
+    distances, _ = cKDTree(points).query(points, k=neighbor_count)
+    mean_neighbor_distance = distances[:, 1:].mean(axis=1)
+    threshold = mean_neighbor_distance.mean() + config.sor_std_ratio * mean_neighbor_distance.std()
+    return points[mean_neighbor_distance <= threshold]

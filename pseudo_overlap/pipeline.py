@@ -8,18 +8,32 @@ import numpy as np
 from .config import PipelineConfig
 from .matching import sift_displacement
 from .reconstruction import filter_displacement, triangulate
+from .separation import load_dividenet_v3, save_grayscale, separate_image
 
 
-def reconstruct_from_separated(left_path: str | Path, right_path: str | Path, config: PipelineConfig, output_dir: str | Path) -> Path:
-    left = cv2.imread(str(left_path), cv2.IMREAD_GRAYSCALE)
-    right = cv2.imread(str(right_path), cv2.IMREAD_GRAYSCALE)
-    if left is None:
-        raise FileNotFoundError(left_path)
-    if right is None:
-        raise FileNotFoundError(right_path)
+def run_pipeline(
+    mixed_image_path: str | Path,
+    checkpoint_path: str | Path,
+    config: PipelineConfig,
+    output_dir: str | Path,
+) -> Path:
+    """Run the thesis pipeline from one pseudo-overlapped image to an XYZ cloud."""
+    mixed = cv2.imread(str(mixed_image_path), cv2.IMREAD_GRAYSCALE)
+    if mixed is None:
+        raise FileNotFoundError(mixed_image_path)
     output = Path(output_dir)
     output.mkdir(parents=True, exist_ok=True)
-    matches = sift_displacement(left, right, config.matching)
+
+    model, device = load_dividenet_v3(checkpoint_path)
+    clear, blurred = separate_image(mixed, model, device)
+    clear_path = output / "clear.png"
+    blurred_path = output / "blurred.png"
+    save_grayscale(clear, clear_path)
+    save_grayscale(blurred, blurred_path)
+
+    clear_u8 = np.clip(clear * 255.0, 0, 255).astype(np.uint8)
+    blurred_u8 = np.clip(blurred * 255.0, 0, 255).astype(np.uint8)
+    matches = sift_displacement(clear_u8, blurred_u8, config.matching)
     np.save(output / "raw_disp_u.npy", matches.dense_u)
     np.save(output / "raw_disp_v.npy", matches.dense_v)
     u_filtered, v_filtered = filter_displacement(matches.dense_u, matches.dense_v, config.filtering)

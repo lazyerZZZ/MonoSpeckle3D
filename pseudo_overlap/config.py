@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -38,33 +38,31 @@ class CameraCalibration:
 
 @dataclass(frozen=True)
 class MatchConfig:
-    max_features: int = 20_000
-    ratio_threshold: float = 0.7
-    ransac_threshold: float = 3.0
-    min_matches: int = 8
-    interpolation: str = "linear"
+    max_features: int
+    ratio_threshold: float
+    ransac_threshold: float
+    min_matches: int
 
 
 @dataclass(frozen=True)
 class FilterConfig:
-    median_window: int = 5
-    jump_threshold: float = 0.5
-    bilateral_diameter: int = 9
-    bilateral_sigma_color: float = 0.5
-    bilateral_sigma_space: float = 5.0
-    roi_margin: int = 200
-    min_depth: float = 50.0
-    max_depth: float = 500.0
-    use_statistical_outlier_removal: bool = True
-    sor_neighbors: int = 30
-    sor_std_ratio: float = 2.5
+    median_window: int
+    jump_threshold: float
+    bilateral_diameter: int
+    bilateral_sigma_color: float
+    bilateral_sigma_space: float
+    roi_margin: int
+    min_depth: float
+    max_depth: float
+    sor_neighbors: int
+    sor_std_ratio: float
 
 
 @dataclass(frozen=True)
 class PipelineConfig:
     calibration: CameraCalibration
-    matching: MatchConfig = field(default_factory=MatchConfig)
-    filtering: FilterConfig = field(default_factory=FilterConfig)
+    matching: MatchConfig
+    filtering: FilterConfig
 
     @classmethod
     def load(cls, path: str | Path) -> "PipelineConfig":
@@ -72,6 +70,6 @@ class PipelineConfig:
             data = json.load(handle)
         return cls(
             calibration=CameraCalibration.from_dict(data["calibration"]),
-            matching=MatchConfig(**data.get("matching", {})),
-            filtering=FilterConfig(**data.get("filtering", {})),
+            matching=MatchConfig(**data["matching"]),
+            filtering=FilterConfig(**data["filtering"]),
         )

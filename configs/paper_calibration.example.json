@@ -11,15 +11,18 @@
     "max_features": 20000,
     "ratio_threshold": 0.7,
     "ransac_threshold": 3.0,
-    "min_matches": 8,
-    "interpolation": "linear"
+    "min_matches": 8
   },
   "filtering": {
     "median_window": 5,
     "jump_threshold": 0.5,
+    "bilateral_diameter": 9,
+    "bilateral_sigma_color": 0.5,
+    "bilateral_sigma_space": 5.0,
     "roi_margin": 200,
     "min_depth": 50.0,
     "max_depth": 500.0,
-    "use_statistical_outlier_removal": true
+    "sor_neighbors": 30,
+    "sor_std_ratio": 2.5
   }
 }

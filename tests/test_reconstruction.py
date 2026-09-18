@@ -19,7 +19,18 @@ class ReconstructionTest(unittest.TestCase):
         )
         u = np.full((8, 8), -10.0, dtype=np.float32)
         v = np.zeros_like(u)
-        config = FilterConfig(roi_margin=1, min_depth=1.0, max_depth=20.0, use_statistical_outlier_removal=False)
+        config = FilterConfig(
+            median_window=5,
+            jump_threshold=0.5,
+            bilateral_diameter=9,
+            bilateral_sigma_color=0.5,
+            bilateral_sigma_space=5.0,
+            roi_margin=1,
+            min_depth=1.0,
+            max_depth=20.0,
+            sor_neighbors=100,
+            sor_std_ratio=2.5,
+        )
         points = triangulate(u, v, calibration, config)
         self.assertEqual(len(points), 36)
         self.assertTrue(np.allclose(points[:, 2], 10.0, atol=1e-4))
